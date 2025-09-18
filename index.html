@@ -1,0 +1,532 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Perps Scalper — One-Pager (IST) + Liq Estimates + CSV</title>
+<style>
+  :root{
+    --bg:#0b0f14; --panel:#101722; --soft:#121a26; --text:#e8eef6; --muted:#9fb2c8;
+    --accent:#3aa3ff; --good:#2ecc71; --bad:#ff5b6e; --warn:#ffbd2e; --grid:#1b2430;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--text);font:15px/1.45 system-ui,-apple-system,Segoe UI,Roboto,Inter,Arial}
+  .wrap{max-width:1160px;margin:0 auto;padding:24px}
+  h1{font-size:28px;margin:0 0 4px}
+  h2{font-size:18px;margin:18px 0 8px;color:var(--muted)}
+  .sub{color:var(--muted);font-size:13px}
+  .grid{display:grid;grid-template-columns:repeat(12,1fr);gap:14px}
+  .card{background:linear-gradient(180deg,var(--panel),var(--soft));border:1px solid #171f2b;border-radius:14px;padding:14px}
+  .span4{grid-column:span 4}
+  .span6{grid-column:span 6}
+  .span8{grid-column:span 8}
+  .span12{grid-column:span 12}
+  label{display:block;font-size:12px;color:var(--muted);margin-bottom:6px}
+  input,select,button,textarea{
+    width:100%;padding:10px 12px;border-radius:10px;border:1px solid #243146;background:#0e141d;color:var(--text);outline:none;
+  }
+  input:focus,select:focus,textarea:focus{border-color:var(--accent);box-shadow:0 0 0 2px #3aa3ff22}
+  .row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .btn{background:var(--accent);border:none;color:white;font-weight:600;cursor:pointer}
+  .btn:active{transform:translateY(1px)}
+  .btn.ghost{background:#0e141d;border:1px solid #243146;color:var(--text)}
+  .kpi{display:flex;gap:12px;flex-wrap:wrap}
+  .pill{flex:1 1 170px;background:#0e141d;border:1px dashed #25324a;border-radius:12px;padding:10px 12px}
+  .pill b{display:block;font-size:12px;color:var(--muted)}
+  .pill span{font-size:18px}
+  .good{color:var(--good)} .bad{color:var(--bad)} .warn{color:var(--warn)}
+  .hr{height:1px;background:#1b2430;margin:12px 0}
+  .small{font-size:12px;color:var(--muted)}
+  .flex{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+  .tag{padding:4px 8px;border-radius:999px;background:#0e141d;border:1px solid #243146;font-size:12px;color:var(--muted)}
+  table{width:100%;border-collapse:collapse}
+  th,td{border-bottom:1px solid #1b2430;padding:8px;text-align:left}
+  .right{text-align:right}
+  .center{text-align:center}
+  .progress{height:10px;background:#101722;border-radius:999px;overflow:hidden;border:1px solid #243146}
+  .bar{height:100%;background:linear-gradient(90deg,var(--bad),#ff8b6e)}
+  .checklist li{margin:6px 0}
+  .muted{color:var(--muted)}
+  .badge{font-size:11px;padding:3px 8px;border-radius:8px;background:#0e141d;border:1px solid #243146;color:var(--muted)}
+  .sticky{position:sticky;top:10px}
+  .help{cursor:help; border-bottom:1px dotted #3aa3ff}
+  @media (max-width:980px){ .span4,.span6,.span8,.span12{grid-column:span 12} .row{grid-template-columns:1fr} }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Crypto Perps Scalper — One-Pager</h1>
+  <div class="sub">Time zone: <b>Asia/Kolkata (IST)</b> • Sessions: <span id="sessions"></span></div>
+
+  <div class="grid" style="margin-top:14px">
+
+    <!-- Calculator + Liq estimates -->
+    <div class="card span6 sticky">
+      <h2>Position-Size Calculator</h2>
+      <div class="row">
+        <div>
+          <label>Symbol</label>
+          <input id="sym" placeholder="e.g., BTCUSDT" />
+        </div>
+        <div>
+          <label>Side</label>
+          <select id="side">
+            <option value="long">Long</option>
+            <option value="short">Short</option>
+          </select>
+        </div>
+      </div>
+      <div class="row">
+        <div>
+          <label>Account Equity ($)</label>
+          <input id="equity" type="number" step="0.01" value="1000" />
+        </div>
+        <div>
+          <label>Risk per Trade (%)</label>
+          <input id="riskPct" type="number" step="0.01" value="0.5" />
+        </div>
+      </div>
+      <div class="row">
+        <div>
+          <label>Entry Price</label>
+          <input id="entry" type="number" step="0.0001" />
+        </div>
+        <div>
+          <label>Stop Price (structural)</label>
+          <input id="stop" type="number" step="0.0001" />
+        </div>
+      </div>
+      <div class="row">
+        <div>
+          <label>ATR(14, 1m) <span class="muted">(optional)</span></label>
+          <input id="atr" type="number" step="0.0001" placeholder="e.g., 55" />
+        </div>
+        <div>
+          <label class="small">
+            <input id="useAtr" type="checkbox" /> Apply ATR floor (0.75×ATR)
+          </label>
+          <div class="small muted">We’ll use max(|entry−stop|, 0.75×ATR).</div>
+        </div>
+      </div>
+      <div class="row">
+        <div>
+          <label>Leverage Cap (×, optional)</label>
+          <input id="levCap" type="number" step="0.1" placeholder="e.g., 5" />
+        </div>
+        <div>
+          <label>Tick/Qty round (optional)</label>
+          <input id="qtyStep" type="number" step="0.000001" placeholder="e.g., 0.001" />
+        </div>
+      </div>
+
+      <div class="hr"></div>
+      <div class="flex">
+        <button class="btn" onclick="calc()">Calculate</button>
+        <button class="btn ghost" onclick="copyPosition()">Copy position</button>
+      </div>
+
+      <div class="kpi" style="margin-top:12px">
+        <div class="pill"><b>Risk $</b><span id="riskUsd">—</span></div>
+        <div class="pill"><b>Stop Distance</b><span id="stopDist">—</span></div>
+        <div class="pill"><b>Position Qty</b><span id="qty">—</span></div>
+        <div class="pill"><b>Notional $</b><span id="notional">—</span></div>
+        <div class="pill"><b>Used Leverage</b><span id="usedLev">—</span></div>
+      </div>
+
+      <div class="grid" style="margin-top:8px;gap:10px">
+        <div class="card span12" style="background:#0e141d">
+          <div class="flex">
+            <span class="badge">Targets</span>
+            <span class="small">Default 1R / 1.5R / 2R</span>
+          </div>
+          <div class="kpi" style="margin-top:8px">
+            <div class="pill"><b>TP1 (1R)</b><span id="tp1">—</span></div>
+            <div class="pill"><b>TP2 (1.5R)</b><span id="tp15">—</span></div>
+            <div class="pill"><b>TP3 (2R)</b><span id="tp2">—</span></div>
+          </div>
+          <div class="small muted" style="margin-top:6px">At TP1, consider scale-out and move stop to breakeven.</div>
+        </div>
+      </div>
+
+      <div class="grid" style="margin-top:8px;gap:10px">
+        <div class="card span12" style="background:#0e141d">
+          <div class="flex">
+            <span class="badge">Liquidation Estimates</span>
+            <span class="small">These are <span class="help" title="Approximations for educational use. Exchanges use tiered maintenance rates and fees.">estimates</span>, not exact exchange values.</span>
+          </div>
+          <div class="row" style="margin-top:8px">
+            <div>
+              <label>Exchange (preset MMR)</label>
+              <select id="exch" onchange="applyMMR()">
+                <option value="binance">Binance USDT‑M (MMR 0.40%)</option>
+                <option value="bybit">Bybit USDT Perp (MMR 0.50%)</option>
+                <option value="okx">OKX USDT Perp (MMR 0.50%)</option>
+                <option value="custom">Custom…</option>
+              </select>
+            </div>
+            <div>
+              <label>Leverage (×)</label>
+              <input id="lev" type="number" step="0.1" value="5" />
+            </div>
+          </div>
+          <div class="row">
+            <div>
+              <label>Maintenance Margin Rate (MMR, %)</label>
+              <input id="mmr" type="number" step="0.01" value="0.40" />
+            </div>
+            <div>
+              <label>Maint. Margin Fixed ($, optional)</label>
+              <input id="mmFixed" type="number" step="0.01" value="0" />
+            </div>
+          </div>
+          <div class="kpi" style="margin-top:8px">
+            <div class="pill"><b>Bankruptcy Px</b><span id="pxBank">—</span></div>
+            <div class="pill"><b>Est. Liq Px</b><span id="pxLiq">—</span></div>
+            <div class="pill"><b>Liq Distance</b><span id="liqDist">—</span></div>
+          </div>
+          <div class="small muted" style="margin-top:6px">
+            Formula (Long): <code>P = [Entry×(1−1/Lev) − (MM_fixed/Qty)] / (1−MMR)</code> • (Short): <code>P = [Entry×(1+1/Lev) − (MM_fixed/Qty)] / (1+MMR)</code>. Defaults assume isolated IM = V/Lev; ignores fees/funding.
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Risk Dashboard -->
+    <div class="card span6">
+      <h2>Risk Dashboard (R-based)</h2>
+      <div class="row">
+        <div>
+          <label>Daily Loss Cap (R)</label>
+          <input id="dailyCapR" type="number" step="0.1" value="-3" />
+        </div>
+        <div>
+          <label>Today’s Risk $ per 1R</label>
+          <input id="rUsd" type="number" step="0.01" value="5" />
+        </div>
+      </div>
+      <div class="hr"></div>
+      <div class="flex">
+        <button class="btn" onclick="addRow()">Log Trade</button>
+        <button class="btn ghost" onclick="resetDay()">Reset Day</button>
+        <button class="btn ghost" onclick="exportCSV()">Export CSV</button>
+        <input id="csvInput" type="file" accept=".csv" style="display:none" />
+        <button class="btn ghost" onclick="document.getElementById('csvInput').click()">Import CSV</button>
+        <span class="tag">Autosaves locally</span>
+      </div>
+      <div class="hr"></div>
+      <div class="grid" style="gap:10px">
+        <div class="span12">
+          <table id="logTbl">
+            <thead>
+              <tr><th>Time</th><th>Symbol</th><th class="right">R</th><th class="right">Risk $</th><th class="right">P&amp;L $</th><th>Notes</th><th></th></tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+      <div class="hr"></div>
+      <div class="grid" style="gap:10px">
+        <div class="pill span4"><b>Trades</b><span id="sTrades">0</span></div>
+        <div class="pill span4"><b>Win Rate</b><span id="sWR">0%</span></div>
+        <div class="pill span4"><b>Cum R</b><span id="sCumR">0</span></div>
+        <div class="pill span6"><b>Cum P&amp;L $</b><span id="sPnL">0</span></div>
+        <div class="span12">
+          <label>Daily Loss Progress</label>
+          <div class="progress"><div class="bar" id="lossBar" style="width:0%"></div></div>
+          <div class="small muted" id="capMsg"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Playbook -->
+    <div class="card span12">
+      <h2>Playbook & Checklist</h2>
+      <div class="grid">
+        <div class="span6">
+          <div class="flex"><span class="badge">A) Trend Scalp — VWAP + 50EMA + Sweep</span></div>
+          <ul class="checklist">
+            <li>Bias: 5‑min <b>50EMA up = long</b>, down = short. Price aligned with <b>session VWAP</b>.</li>
+            <li>Trigger: <b>Liquidity sweep</b> of recent 5–15m high/low, then snap back.</li>
+            <li>Entry: Retest of swept level / tiny FVG fill. Prefer limit; partial market if momentum.</li>
+            <li>Stop: Beyond sweep wick or <code>0.75×ATR(14,1m)</code>, whichever is larger.</li>
+            <li>TP: 1R (move to BE) → VWAP / next liquidity pivot → runner via 5‑min fractal trail.</li>
+            <li>Invalidation: 5‑min close crosses to far side of VWAP after entry.</li>
+          </ul>
+        </div>
+        <div class="span6">
+          <div class="flex"><span class="badge">B) Mean‑Reversion — Bollinger(20,2) + RSI Divergence</span></div>
+          <ul class="checklist">
+            <li>Bias: Price chopping near VWAP; 50EMA flat.</li>
+            <li>Trigger: Outer band tag + RSI(14) divergence vs. prior swing.</li>
+            <li>Entry: 1‑min close back inside band, target mid‑band → VWAP → inner band.</li>
+            <li>Stop: Outside band + last swing.</li>
+            <li>Scale‑out logic mirrors A) at 1R and VWAP.</li>
+          </ul>
+        </div>
+      </div>
+      <div class="hr"></div>
+      <div class="small muted">Rules: Risk 0.25–0.75%/trade. Stop trading at −3R for the day. Avoid major news minutes. One bias per session. Educational use only; futures carry risk.</div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+// Helpers
+const $ = s => document.querySelector(s);
+const fmt = (x, d=2) => (isFinite(x)?Number(x).toLocaleString(undefined,{maximumFractionDigits:d}):"—");
+
+// Sessions (IST)
+function setSessions(){
+  const now = new Date();
+  const hr = now.getHours();
+  let label = "";
+  if (hr>=12 && hr<16) label = "London Open LIVE";
+  else if (hr>=19 && hr<23) label = "New York session LIVE";
+  else label = "Quiet hours";
+  $("#sessions").textContent = `${now.toLocaleString()} • ${label}`;
+}
+setSessions();
+setInterval(setSessions, 30*1000);
+
+// Apply exchange presets
+function applyMMR(){
+  const v = $("#exch").value;
+  if(v==="binance"){ $("#mmr").value = 0.40; $("#mmFixed").value = 0; }
+  else if(v==="bybit"){ $("#mmr").value = 0.50; $("#mmFixed").value = 0; }
+  else if(v==="okx"){ $("#mmr").value = 0.50; $("#mmFixed").value = 0; }
+}
+
+// Calculator
+function calc(){
+  const sym = $("#sym").value || "BTCUSDT";
+  const side = $("#side").value;
+  const equity = parseFloat($("#equity").value||0);
+  const riskPct = parseFloat($("#riskPct").value||0);
+  const entry = parseFloat($("#entry").value||0);
+  const stop = parseFloat($("#stop").value||0);
+  const atr = parseFloat($("#atr").value||0);
+  const useAtr = $("#useAtr").checked;
+  const levCap = parseFloat($("#levCap").value||0);
+  const step = parseFloat($("#qtyStep").value||0);
+  const lev = parseFloat($("#lev").value||0);
+  const mmrPct = parseFloat($("#mmr").value||0) / 100.0; // convert to fraction
+  const mmFixed = parseFloat($("#mmFixed").value||0);
+
+  if(!(equity>0 && riskPct>0 && entry>0 && stop>0 && lev>0)){
+    alert("Please fill Equity, Risk%, Entry, Stop, and Leverage.");
+    return;
+  }
+
+  const riskUsd = equity * (riskPct/100);
+  let stopDist = Math.abs(entry - stop);
+  if(useAtr && atr>0){ stopDist = Math.max(stopDist, 0.75*atr); }
+  let qty = riskUsd / stopDist; // qty in contract units of base coin for USDT‑M
+  if(step>0){ qty = Math.round(qty/step)*step; }
+  const notional = qty * entry;
+  const usedLev = equity>0 ? notional / equity : 0;
+
+  // Targets
+  const R = stopDist;
+  const tp1 = side==="long" ? entry + R : entry - R;
+  const tp15= side==="long" ? entry + 1.5*R : entry - 1.5*R;
+  const tp2 = side==="long" ? entry + 2*R : entry - 2*R;
+
+  $("#riskUsd").textContent = "$"+fmt(riskUsd,2);
+  $("#stopDist").textContent = fmt(stopDist,4);
+  $("#qty").textContent = fmt(qty,6);
+  $("#notional").textContent = "$"+fmt(notional,2);
+  let levNote = ""; if(levCap>0 && usedLev>levCap){ levNote = ` (exceeds cap ×${levCap})`; }
+  $("#usedLev").innerHTML = fmt(usedLev,2)+"×"+(levNote?` <span class='warn'>${levNote}</span>`:"");
+  $("#tp1").textContent = fmt(tp1,4);
+  $("#tp15").textContent = fmt(tp15,4);
+  $("#tp2").textContent = fmt(tp2,4);
+
+  // Liquidation estimates
+  // Bankruptcy price ignores maintenance margin & fees
+  let pxBank;
+  if(side==="long") pxBank = entry * (1 - 1/lev);
+  else pxBank = entry * (1 + 1/lev);
+
+  // Estimated liquidation with simplified MMR model:
+  // Long:  P = [Entry*(1−1/Lev) − (MM_fixed/Qty)] / (1−MMR)
+  // Short: P = [Entry*(1+1/Lev) − (MM_fixed/Qty)] / (1+MMR)
+  let pxLiq;
+  if(qty>0){
+    if(side==="long") pxLiq = (entry*(1 - 1/lev) - (mmFixed/qty)) / (1 - mmrPct);
+    else pxLiq = (entry*(1 + 1/lev) - (mmFixed/qty)) / (1 + mmrPct);
+  }
+
+  $("#pxBank").textContent = isFinite(pxBank)? fmt(pxBank,4):"—";
+  $("#pxLiq").innerHTML = (isFinite(pxLiq)? fmt(pxLiq,4):"—");
+  if(isFinite(pxLiq)){
+    const dist = Math.abs((pxLiq - entry)/entry)*100;
+    $("#liqDist").innerHTML = fmt(dist,2)+"%" + (dist<1?" <span class='bad'>(tight!)</span>": dist<2?" <span class='warn'>(close)</span>":" ");
+  } else { $("#liqDist").textContent = "—"; }
+
+  // Sync R-$ for dashboard
+  $("#rUsd").value = fmt(riskUsd,2);
+
+  // Cache
+  localStorage.setItem("pps_calc", JSON.stringify({sym,side,equity,riskPct,entry,stop,atr,useAtr,levCap,step,riskUsd,stopDist,qty,notional,usedLev,tp1,tp15,tp2,lev,mmrPct,mmFixed,pxBank,pxLiq}));
+}
+
+function copyPosition(){
+  const c = JSON.parse(localStorage.getItem("pps_calc")||"{}");
+  if(!c.qty){ alert("Run the calculator first."); return; }
+  const lines = [
+    `Symbol: ${c.sym||""} | Side: ${(c.side||"").toUpperCase()}`,
+    `Entry: ${c.entry} | Stop: ${c.stop} | Qty: ${c.qty}`,
+    `Notional: $${fmt(c.notional,2)} | Risk: ${(c.riskPct||0)}% of $${fmt(c.equity,2)}`,
+    `Targets: TP1 ${fmt(c.tp1,4)}, TP2 ${fmt(c.tp15,4)}, TP3 ${fmt(c.tp2,4)}`,
+    `Leverage: ×${fmt(c.lev,2)} | BankPx: ${fmt(c.pxBank,4)} | EstLiq: ${fmt(c.pxLiq,4)}`
+  ].join("\n");
+  navigator.clipboard.writeText(lines).then(()=> alert("Copied position details to clipboard."));
+}
+
+// R Dashboard state
+function loadDay(){
+  const obj = JSON.parse(localStorage.getItem("pps_day")||"{}")
+  if(!obj.rows) obj.rows = [];
+  $("#dailyCapR").value = (obj.dailyCapR ?? -3);
+  $("#rUsd").value = (obj.rUsd ?? 5);
+  const tb = $("#logTbl tbody"); tb.innerHTML = "";
+  obj.rows.forEach((r)=> addRowToDOM(r));
+  updateStats();
+}
+function saveDay(){
+  const rows = Array.from($("#logTbl tbody").children).map(tr=>({
+    t: tr.querySelector("[data-col='t']").textContent,
+    s: tr.querySelector("[data-col='s']").textContent,
+    r: parseFloat(tr.querySelector("[data-col='r']").textContent),
+    ru: parseFloat(tr.querySelector("[data-col='ru']").textContent),
+    p: parseFloat(tr.querySelector("[data-col='p']").textContent),
+    n: tr.querySelector("[data-col='n']").textContent,
+  }));
+  const obj = { dailyCapR: parseFloat($("#dailyCapR").value||-3), rUsd: parseFloat($("#rUsd").value||5), rows };
+  localStorage.setItem("pps_day", JSON.stringify(obj));
+}
+function addRow(defaults){
+  const rUsd = parseFloat($("#rUsd").value||0);
+  const c = JSON.parse(localStorage.getItem("pps_calc")||"{}");
+  const row = defaults || { t: new Date().toLocaleTimeString(), s: c.sym || "", r: 1, ru: rUsd, p: rUsd*1, n: "" };
+  addRowToDOM(row); updateStats(); saveDay();
+}
+function addRowToDOM(row){
+  const tb = $("#logTbl tbody");
+  const tr = document.createElement("tr");
+  tr.innerHTML = `
+    <td data-col="t" contenteditable="true">${row.t}</td>
+    <td data-col="s" contenteditable="true">${row.s}</td>
+    <td data-col="r" contenteditable="true" class="right">${row.r}</td>
+    <td data-col="ru" contenteditable="true" class="right">${row.ru}</td>
+    <td data-col="p" class="right">${row.p}</td>
+    <td data-col="n" contenteditable="true">${row.n||""}</td>
+    <td class="center"><button class="btn ghost" onclick="this.closest('tr').remove(); updateStats(); saveDay();">×</button></td>`;
+  tr.querySelector("[data-col='r']").addEventListener("input", ()=>{ recalcRow(tr); });
+  tr.querySelector("[data-col='ru']").addEventListener("input", ()=>{ recalcRow(tr); });
+  tb.appendChild(tr);
+}
+function recalcRow(tr){
+  const r = parseFloat(tr.querySelector("[data-col='r']").textContent||0);
+  const ru= parseFloat(tr.querySelector("[data-col='ru']").textContent||0);
+  tr.querySelector("[data-col='p']").textContent = (ru*r).toFixed(2);
+  updateStats(); saveDay();
+}
+function updateStats(){
+  const rows = Array.from($("#logTbl tbody").children);
+  const rs = rows.map(tr=>parseFloat(tr.querySelector("[data-col='r']").textContent||0));
+  const pusd = rows.map(tr=>parseFloat(tr.querySelector("[data-col='p']").textContent||0));
+  const wins = rs.filter(x=>x>0).length; const cumR = rs.reduce((a,b)=>a+b,0); const cumP = pusd.reduce((a,b)=>a+b,0);
+  $("#sTrades").textContent = rows.length;
+  $("#sWR").textContent = rows.length? Math.round(100*wins/rows.length)+"%" : "0%";
+  $("#sCumR").textContent = fmt(cumR,2);
+  $("#sPnL").textContent = "$"+fmt(cumP,2);
+  const cap = parseFloat($("#dailyCapR").value||-3);
+  const used = cap<0? Math.min(Math.abs(cumR / cap), 1) : 0;
+  $("#lossBar").style.width = (used*100)+"%";
+  let msg = `Cap: ${cap}R • Cum: ${fmt(cumR,2)}R`;
+  if(cumR <= cap){ msg += " — Stop trading (cap hit)."; }
+  $("#capMsg").textContent = msg;
+}
+$("#dailyCapR").addEventListener("input", ()=>{ updateStats(); saveDay(); });
+$("#rUsd").addEventListener("input", ()=>{ saveDay(); });
+
+// CSV Export/Import
+function exportCSV(){
+  const rows = Array.from($("#logTbl tbody").children).map(tr=>[
+    tr.querySelector("[data-col='t']").textContent,
+    tr.querySelector("[data-col='s']").textContent,
+    tr.querySelector("[data-col='r']").textContent,
+    tr.querySelector("[data-col='ru']").textContent,
+    tr.querySelector("[data-col='p']").textContent,
+    '"'+(tr.querySelector("[data-col='n']").textContent||'').replace(/"/g,'""')+'"'
+  ]);
+  const header = ["Time","Symbol","R","RiskUSD","PnLUSD","Notes"];
+  const csv = [header.join(",")].concat(rows.map(r=>r.join(","))).join("\n");
+  const blob = new Blob([csv], {type:"text/csv;charset=utf-8;"});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = `perps_tradelog_${new Date().toISOString().slice(0,10)}.csv`;
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+$("#csvInput").addEventListener('change', (e)=>{
+  const file = e.target.files[0]; if(!file) return;
+  const reader = new FileReader();
+  reader.onload = () => {
+    const text = reader.result; importCSV(text);
+  }; reader.readAsText(file);
+});
+function importCSV(text){
+  const lines = text.split(/\r?\n/).filter(Boolean);
+  if(lines.length<=1) return;
+  const tb = $("#logTbl tbody"); tb.innerHTML = "";
+  for(let i=1;i<lines.length;i++){
+    const raw = lines[i];
+    // naive CSV split (handles quoted notes)
+    const parts = [];
+    let cur = '', inQ=false;
+    for(let j=0;j<raw.length;j++){
+      const ch = raw[j];
+      if(ch==='"'){
+        if(inQ && raw[j+1]==='"'){ cur+='"'; j++; }
+        else inQ=!inQ;
+      } else if(ch===',' && !inQ){ parts.push(cur); cur=''; }
+      else cur+=ch;
+    }
+    parts.push(cur);
+    if(parts.length<6) continue;
+    const row = { t: parts[0], s: parts[1], r: parseFloat(parts[2]||0), ru: parseFloat(parts[3]||0), p: parseFloat(parts[4]||0), n: parts[5] };
+    addRowToDOM(row);
+  }
+  updateStats(); saveDay();
+}
+
+// Persist calculator inputs
+(function(){
+  const s = JSON.parse(localStorage.getItem("pps_calc")||"{}");
+  if(Object.keys(s).length){
+    $("#sym").value = s.sym||""; $("#side").value = s.side||"long";
+    $("#equity").value = s.equity||1000; $("#riskPct").value = s.riskPct||0.5;
+    $("#entry").value = s.entry||""; $("#stop").value  = s.stop||"";
+    $("#atr").value   = s.atr||""; $("#useAtr").checked = !!s.useAtr;
+    $("#levCap").value = s.levCap||""; $("#qtyStep").value= s.step||"";
+    $("#lev").value = s.lev||5; $("#mmr").value = s.mmrPct? (s.mmrPct*100).toFixed(2): 0.40; $("#mmFixed").value = s.mmFixed||0;
+    if(s.qty) calc();
+  }
+  loadDay(); applyMMR();
+})();
+
+// Keyboard shortcut: Ctrl/Cmd+K to Calculate
+addEventListener("keydown", (e)=>{ if((e.ctrlKey||e.metaKey)&& e.key.toLowerCase()==='k'){ e.preventDefault(); calc(); }});
+
+// Reset day
+function resetDay(){
+  if(!confirm('Clear today\'s log?')) return;
+  localStorage.removeItem('pps_day'); loadDay();
+}
+</script>
+</body>
+</html>
